@@ -73,5 +73,5 @@ class Predictor:
         pred = self.readout(h_to_pred[:, -1])
         pred = torch.softmax(pred, dim=-1)
         # Create a random sample the same size as the prediction for testing
-        pred = torch.softmax(torch.randn(*pred.shape), dim=-1)
+        # pred = torch.softmax(torch.randn(*pred.shape), dim=-1)
         return pred.cpu().numpy(), h
