@@ -128,7 +128,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
 .venv
 env/
 venv/
@@ -174,3 +173,5 @@ cython_debug/
 .pypirc
 
 .DS_Store
+
+follow_touch*.json
