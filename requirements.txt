@@ -1,6 +1,0 @@
-streamlit
-streamlit-extras
-streamlit-autorefresh
-numpy
-plotly
-scikit-learn
