@@ -1,11 +1,12 @@
 import os
+
 from src import streamlit_run
 
-SENSORS_DATA = os.getenv(
-    "SENSORS_DATA",
-    "/Users/vdecaro/Desktop/Code/demo/follow-touch/follow_touch_[0-3].json",
-)
-MODEL_PATH = os.getenv("MODEL_PATH", default="./params")
+STORAGE_PATH = os.getenv("STORAGE_PATH")
 
 if __name__ == "__main__":
-    streamlit_run(SENSORS_DATA, MODEL_PATH)
+    if STORAGE_PATH is None:
+        raise ValueError(
+            "STORAGE_PATH environment variable is not set. Please set it to the path of the data file."
+        )
+    streamlit_run(STORAGE_PATH)

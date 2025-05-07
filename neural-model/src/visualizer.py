@@ -13,6 +13,7 @@ from .model import Predictor
 if TYPE_CHECKING:
     import os
 
+FOLLOW_TOUCH_ID = int(os.getenv("FOLLOW_TOUCH_ID", "0"))
 LABEL_CLASSES = 5
 LABEL_NAMES = {
     0: "Center",
@@ -24,7 +25,7 @@ LABEL_NAMES = {
 LABEL_COLORS = {0: "red", 1: "blue", 2: "green", 3: "orange", 4: "purple"}
 
 
-def streamlit_run(data_path: os.PathLike, model_path: os.PathLike) -> None:
+def streamlit_run(storage_path) -> None:
     """
     Run the Streamlit app to visualize predictions.
     Args:
@@ -32,6 +33,20 @@ def streamlit_run(data_path: os.PathLike, model_path: os.PathLike) -> None:
         model_path (os.PathLike): Path to the model file (not used in this function).
     """
     configure_streamlit()
+    storage_path = Path(storage_path)
+    # Find the latest file matching the pattern "follow_touch_[0-3]_date.json"
+    files = list(storage_path.glob(f"follow_touch_{FOLLOW_TOUCH_ID}_*.json"))
+    if not files:
+        st.error(
+            "No matching data files found. Content is "
+            + str(list(storage_path.iterdir()))
+        )
+        st.stop()
+
+    # Sort files by date in descending order and pick the latest one
+    latest_file = max(files, key=lambda f: f.stat().st_mtime)
+    data_path = latest_file
+    model_path = storage_path / "params"
 
     # Constants
     PRED_FREQ = int(os.environ.get("PRED_FREQ", 10000))  # in ms
@@ -41,7 +56,7 @@ def streamlit_run(data_path: os.PathLike, model_path: os.PathLike) -> None:
     st_autorefresh(interval=PRED_FREQ, limit=None, key="data_autorefresh")
 
     # File validation
-    data_file = Path(data_path)
+    data_file = Path(storage_path)
     if not data_file.exists():
         st.warning(f"Data file not found at {data_path}")
         st.stop()
@@ -102,7 +117,6 @@ def run_prediction(buffer: list, model: Predictor) -> tuple:
     """Run predictions and PCA on the latest data in the buffer."""
     window = np.array(buffer)
     pred, activations = model(window)
-    print("PREDICTIONS AND ACTIVATIONS SHAPES:", pred.shape, activations.shape)
     pca = PCA(n_components=3)
     reduced_activations = [
         pca.fit_transform(activations[i]) for i in range(activations.shape[0])

@@ -1,8 +1,8 @@
 --extra-index-url https://download.pytorch.org/whl/nightly/cu121
-torch==2.2.0.dev20231001+cu121
+torch==2.2.0
 streamlit==1.45.0
 streamlit-extras==0.6.0
 streamlit-autorefresh==1.0.1
-numpy==2.2.3
+numpy==1.24.4
 plotly==6.0.1
 scikit-learn==1.6.1
