@@ -94,6 +94,8 @@ def streamlit_run():
         model = Predictor(model_path=model_path)
         for data_path in unprocessed_files:
             samples = load_data(data_path)
+            if samples is None:
+                continue
             print(f"Loaded {len(samples)} samples from {data_path}")
             samples = np.array([samples])
             # Apply min max normalization through min e max over the 0th axis
@@ -178,8 +180,7 @@ def load_data(data_path: os.PathLike) -> list:
             with open(data_path, "r") as f:
                 return json.load(f)
         except Exception as e:
-            st.error(f"Error loading data: {e}")
-            st.stop()
+            return None
     else:
 
         try:
@@ -191,8 +192,7 @@ def load_data(data_path: os.PathLike) -> list:
             return list(data)
 
         except Exception as e:
-            st.error(f"Error loading data: {e}")
-            st.stop()
+            return None
 
 
 def run_prediction(buffer: list, model: Predictor) -> tuple:
