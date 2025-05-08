@@ -37,9 +37,8 @@ def streamlit_run(storage_path) -> None:
     # Find the latest file matching the pattern "follow_touch_[0-3]_date.json"
     files = list(storage_path.glob(f"follow_touch_{FOLLOW_TOUCH_ID}_*.json"))
     if not files:
-        st.error(
-            "No matching data files found. Content is "
-            + str(list(storage_path.iterdir()))
+        st.warning(
+            f"No matching data files found. Waiting for data to be generated in {storage_path}"
         )
         st.stop()
 
