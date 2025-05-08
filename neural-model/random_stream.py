@@ -3,7 +3,8 @@ import time
 import json
 import os
 
-OUTPUT_FILE = "follow_touch_[0-3].json"
+OUTPUT_DIR = "/Users/vdecaro/Desktop/Code/demo/storage"
+SEQ_LEN = 50
 FEATURE_DIM = 10
 SAMPLING_FREQ = 10
 UPDATE_FREQ = 1000
@@ -14,24 +15,16 @@ def generate_sample():
 
 
 def main():
-    if os.path.exists(OUTPUT_FILE):
-        with open(OUTPUT_FILE, "r") as f:
-            data = json.load(f)
-    else:
-        data = []
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    while True:
-        data += generate_sample()
-
-        with open(OUTPUT_FILE, "w") as f:
-            json.dump(data, f)
-
-        print(f"Wrote sample. Total samples: {len(data)}")
-        time.sleep(UPDATE_FREQ / 1000)  # Convert ms to seconds
-
-        if len(data) > 1000:
-            print("Reached 1000 samples, stopping.")
-            break
+    for i in range(20):
+        sample = [np.random.randn(10).tolist() for _ in range(SEQ_LEN)]
+        timestamp = int(time.time() * 1000)
+        filename = f"{OUTPUT_DIR}/follow_touch_0_{timestamp}.json"
+        with open(filename, "w") as f:
+            json.dump(sample, f)
+        print(f"Wrote file: {filename}")
+        time.sleep(UPDATE_FREQ / 1000)
 
 
 if __name__ == "__main__":

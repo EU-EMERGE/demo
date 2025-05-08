@@ -10,10 +10,8 @@ import json
 from pathlib import Path
 from .model import Predictor
 
-if TYPE_CHECKING:
-    import os
-
 FOLLOW_TOUCH_ID = int(os.getenv("FOLLOW_TOUCH_ID", "0"))
+TRAJECTORY_LENGTH = int(os.getenv("TRAJECTORY_LENGTH", "10"))
 LABEL_CLASSES = 5
 LABEL_NAMES = {
     0: "Center",
@@ -25,74 +23,102 @@ LABEL_NAMES = {
 LABEL_COLORS = {0: "red", 1: "blue", 2: "green", 3: "orange", 4: "purple"}
 
 
-def streamlit_run(storage_path) -> None:
+def streamlit_run(storage_path):
     """
     Run the Streamlit app to visualize predictions.
     Args:
         data_path (os.PathLike): Path to the data file containing activations and labels.
         model_path (os.PathLike): Path to the model file (not used in this function).
     """
+    # Constants
+    PRED_FREQ = int(os.environ.get("PRED_FREQ", 10000))  # in ms
+
     configure_streamlit()
+    # Auto-refresh
+    st_autorefresh(interval=PRED_FREQ, limit=None, key="data_autorefresh")
+
     storage_path = Path(storage_path)
-    # Find the latest file matching the pattern "follow_touch_[0-3]_date.json"
-    files = list(storage_path.glob(f"follow_touch_{FOLLOW_TOUCH_ID}_*.json"))
+
+    # Find all files matching the pattern "follow_touch_[FOLLOW_TOUCH_ID]_*.json" sorted by filename
+    files = sorted(
+        list(storage_path.glob(f"follow_touch_{FOLLOW_TOUCH_ID}_*.json")),
+        key=lambda f: f.name,
+    )
     if not files:
         st.warning(
             f"No matching data files found. Waiting for data to be generated in {storage_path}"
         )
         st.stop()
 
-    # Sort files by date in descending order and pick the latest one
-    latest_file = max(files, key=lambda f: f.stat().st_mtime)
-    data_path = latest_file
-    model_path = storage_path / "params"
-
-    # Constants
-    PRED_FREQ = int(os.environ.get("PRED_FREQ", 10000))  # in ms
-    N_PRED_SAMPLES = int(os.environ.get("N_PRED_SAMPLES", 50))
-
-    # Auto-refresh
-    st_autorefresh(interval=PRED_FREQ, limit=None, key="data_autorefresh")
-
-    # File validation
-    data_file = Path(storage_path)
-    if not data_file.exists():
-        st.warning(f"Data file not found at {data_path}")
-        st.stop()
-
-    # Load and buffer data
-    samples = load_data(data_path)
-
-    if "predictions" not in st.session_state:
+    if "processed_files" not in st.session_state:
+        st.session_state.processed_files = set()
         st.session_state.predictions = []
+        st.session_state.activations = []
         st.session_state.pca_buffer = []
-        st.session_state.last_pred_index = 0
+        st.session_state.class_proto = {i: None for i in range(LABEL_CLASSES)}
 
-    if len(samples) - st.session_state.last_pred_index >= N_PRED_SAMPLES:
+    unprocessed_files = [
+        f for f in files if str(f) not in st.session_state.processed_files
+    ]
+
+    if unprocessed_files:
+        model_path = storage_path / "params"
         model = Predictor(model_path=model_path)
-        missing_data = samples[st.session_state.last_pred_index :]
-        num_batches = len(missing_data) // N_PRED_SAMPLES
+        for data_path in unprocessed_files:
+            samples = load_data(data_path)
+            print(f"Loaded {len(samples)} samples from {data_path}")
+            pred, activations = model(np.array([samples]))
+            st.session_state.predictions.extend(pred)
+            st.session_state.activations.extend(activations)
+            st.session_state.processed_files.add(str(data_path))
 
-        if num_batches > 0:
-            # Stack the data for parallel processing
-            stacked_batches = [
-                missing_data[i * N_PRED_SAMPLES : (i + 1) * N_PRED_SAMPLES]
-                for i in range(num_batches)
-            ]
-            stacked_batches = np.stack(stacked_batches, axis=0)
-            print(
-                f"Processing {stacked_batches.shape} batches of {N_PRED_SAMPLES} samples each."
+        # Update the PCA on all the activations
+        pca = PCA(n_components=3)
+        if len(st.session_state.predictions) == 1:
+            pca = pca.fit(st.session_state.activations[0][-TRAJECTORY_LENGTH:])
+        else:
+            pca = pca.fit(
+                np.concatenate(
+                    [act[-TRAJECTORY_LENGTH:] for act in st.session_state.activations],
+                    axis=0,
+                )
             )
-            # Run predictions in parallel
-            preds, reduced_activations = run_prediction(stacked_batches, model)
+        st.session_state.pca_buffer = [
+            pca.transform(act[-TRAJECTORY_LENGTH:])
+            for act in st.session_state.activations
+        ]
 
-            # Flatten and store results
-            st.session_state.predictions += preds
-            st.session_state.pca_buffer += reduced_activations
+        # Update the prototypes of the PCA for each class
+        class_labels = np.argmax(np.array(st.session_state.predictions), axis=-1)
+        # Group all the PCA values by class
+        for i in range(LABEL_CLASSES):
+            pca_values = [
+                st.session_state.pca_buffer[j][-1]
+                for j in range(len(st.session_state.predictions))
+                if class_labels[j] == i
+            ]
+            if len(pca_values) > 0:
+                if len(pca_values) > 1:
+                    # Stack the PCA values for each class
+                    pca_values = np.stack(pca_values, axis=0)
+                    # Calculate the mean and std of the PCA values for each class
+                    st.session_state.class_proto[i] = (
+                        np.mean(pca_values, axis=0),
+                        np.random.random(3),  # np.std(pca_values, axis=0),
+                    )
+                else:
+                    st.session_state.class_proto[i] = pca_values[0], np.zeros(3)
+        print(
+            f"Processed {st.session_state.processed_files}\n",
+            f"Predictions: {st.session_state.predictions}\n",
+            f"PCA Buffer: {st.session_state.pca_buffer}\n",
+            f"Class prototypes:{st.session_state.class_proto}",
+        )
 
-            st.session_state.last_pred_index += num_batches * N_PRED_SAMPLES
     display_visualization(
-        samples, st.session_state.predictions, st.session_state.pca_buffer
+        st.session_state.predictions,
+        st.session_state.pca_buffer,
+        st.session_state.class_proto,
     )
 
 
@@ -123,20 +149,22 @@ def run_prediction(buffer: list, model: Predictor) -> tuple:
     return pred.tolist(), reduced_activations
 
 
-def display_visualization(samples, predictions, pca_data):
+def display_visualization(predictions, pca_data, class_proto):
     """Display the PCA visualization with sidebar controls."""
-    st.sidebar.write(f"Buffer size: {len(samples)}")
+    st.sidebar.write(
+        f"Number of sequences (Touches): {len(st.session_state.processed_files)}"
+    )
     DISPLAY_LIMIT = st.sidebar.slider(
-        "Number of Points to Display", min_value=1, max_value=100, value=1
+        "Number of Sequences", min_value=1, max_value=100, value=5
     )
     max_time_index = max(len(st.session_state.pca_buffer) - DISPLAY_LIMIT, 0)
     TIME_SLIDER = st.sidebar.slider(
-        "Time Window (index)",
+        "Index of the first sequence to show",
         min_value=0,
         max_value=max_time_index if max_time_index > 0 else 1,
         value=max_time_index,
     )
-    if "pca_buffer" not in st.session_state or len(st.session_state.pca_buffer) < 3:
+    if "pca_buffer" not in st.session_state or len(st.session_state.pca_buffer) == 0:
         # Display an empty plot if there is not enough data
         empty_fig = go.Figure()
         empty_fig.update_layout(
@@ -157,19 +185,67 @@ def display_visualization(samples, predictions, pca_data):
                 added_labels.add(label)
             fig.add_trace(
                 go.Scatter3d(
-                    x=pca_data[idx][0],
-                    y=pca_data[idx][1],
-                    z=pca_data[idx][2],
+                    x=pca_data[idx][:, 0],
+                    y=pca_data[idx][:, 1],
+                    z=pca_data[idx][:, 2],
                     mode="markers+lines",
-                    marker=dict(size=6, color=LABEL_COLORS[label], opacity=0.9),
+                    marker=dict(
+                        size=[6] * (len(pca_data[idx]) - 1) + [8],
+                        symbol=["circle"] * (len(pca_data[idx]) - 1) + ["cross"],
+                        color=[LABEL_COLORS[label]] * len(pca_data[idx]),
+                        opacity=0.9,
+                    ),
                     line=dict(color=LABEL_COLORS[label], width=2),
                     name=LABEL_NAMES[label],
                     showlegend=show_legend,
                 )
             )
+        # Add class prototype points
+        for class_id, proto in class_proto.items():
+            if proto is not None and class_id in added_labels:
+                mean, std = proto
+                fig.add_trace(
+                    go.Scatter3d(
+                        x=[mean[0]],
+                        y=[mean[1]],
+                        z=[mean[2]],
+                        mode="markers",
+                        marker=dict(
+                            size=8,
+                            symbol="diamond",
+                            color=LABEL_COLORS[class_id],
+                            opacity=1.0,
+                        ),
+                        name=f"{LABEL_NAMES[class_id]} Proto",
+                        showlegend=True,
+                    )
+                )
+
+                # Generate a sphere to represent the std deviation, centered at the mean
+                u, v = np.mgrid[0 : 2 * np.pi : 20j, 0 : np.pi : 10j]
+                x = std[0] * np.sin(v) * np.cos(u) + mean[0]
+                y = std[1] * np.sin(v) * np.sin(u) + mean[1]
+                z = std[2] * np.cos(v) + mean[2]
+
+                fig.add_trace(
+                    go.Surface(
+                        x=x,
+                        y=y,
+                        z=z,
+                        showscale=False,
+                        opacity=0.2,
+                        surfacecolor=np.full_like(x, class_id),
+                        colorscale=[
+                            [0, LABEL_COLORS[class_id]],
+                            [1, LABEL_COLORS[class_id]],
+                        ],
+                        name=f"{LABEL_NAMES[class_id]} Std",
+                        showlegend=False,
+                    )
+                )
         fig.update_layout(
             scene=dict(xaxis_title="PC1", yaxis_title="PC2", zaxis_title="PC3"),
-            title="3D PCA of RNN Activations",
+            title="3D PCA of RON Activations",
             margin=dict(l=0, r=0, t=50, b=0),
             legend=dict(title="Predicted Labels", itemsizing="constant"),
         )
