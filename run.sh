@@ -12,13 +12,13 @@ fi
 source "$(conda info --base)/etc/profile.d/conda.sh"
 
 if [ "$1" == "touch" ]; then
-    # Start follow-touch in background
     echo "Starting follow-touch application..."
-    conda run -n follow-touch-env python follow-touch/app.py
+    conda activate follow-touch-env
+    python -u follow-touch/app.py 2>&1 | tee follow-touch.log
 elif [ "$1" == "neural" ]; then
-    # Start neural-model in foreground
     echo "Starting neural-model application..."
-    conda run -n neural-model-env streamlit run neural-model/app.py
+    conda activate neural-model-env
+    python -u -m streamlit run neural-model/app.py | tee neural-model.log
 else
     echo "❌ Error: Invalid argument. Use 'touch' or 'neural'."
     exit 1

@@ -29,12 +29,14 @@ $condaBase = (conda info --base).Trim()
 switch ($Target) {
     "touch" {
         # Start follow-touch in foreground
-        Write-Host "Starting follow-touch application in background..."
-        conda run -n follow-touch-env python follow-touch/app.py
+        Write-Host "Starting follow-touch application in foreground..."
+        conda activate follow-touch-env
+        python -u follow-touch/app.py 2>&1 | tee follow-touch.log
     }
     "neural" {
         # Start neural-model in foreground
         Write-Host "Starting neural-model application in foreground..."
-        conda run -n neural-model-env streamlit run neural-model/app.py
+        conda activate neural-model-env
+        python -u -m streamlit run neural-model/app.py | tee neural-model.log
     }
 }
