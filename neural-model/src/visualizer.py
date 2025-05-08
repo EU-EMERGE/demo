@@ -187,7 +187,7 @@ def load_data(data_path: os.PathLike) -> list:
         try:
             with open(data_path, "r") as f:
                 content = f.read()
-                content = content[:-3] + "]}"
+                content = content[:-4] + "]}"
                 data = json.loads(content)
                 data = data[f"follow_touch_{FOLLOW_TOUCH_ID}"]
                 data = map(process_fn, data)
