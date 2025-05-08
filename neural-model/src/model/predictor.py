@@ -6,6 +6,8 @@ from sklearn.preprocessing import StandardScaler
 
 from .ron import RandomizedOscillatorsNetwork
 
+MODEL_INPUT_SIZE = int(os.getenv("MODEL_INPUT_SIZE", 4))
+
 
 class Predictor:
 
@@ -26,7 +28,7 @@ class Predictor:
             epsilon + epsilon_range / 2.0,
         )
         self.model = RandomizedOscillatorsNetwork(
-            n_inp=10,
+            n_inp=MODEL_INPUT_SIZE,
             n_hid=n_hid,
             dt=dt,
             gamma=gamma,

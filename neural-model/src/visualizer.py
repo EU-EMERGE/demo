@@ -12,6 +12,7 @@ from .model import Predictor
 
 DEBUG = int(os.getenv("DEBUG", "0"))
 FOLLOW_TOUCH_ID = int(os.getenv("FOLLOW_TOUCH_ID", "0"))
+MODEL_INPUT_SIZE = int(os.getenv("MODEL_INPUT_SIZE", "4"))
 TRAJECTORY_LENGTH = int(os.getenv("TRAJECTORY_LENGTH", "10"))
 LABEL_CLASSES = 5
 LABEL_NAMES = {
@@ -88,7 +89,7 @@ def streamlit_run(storage_path):
     ]
 
     if unprocessed_files:
-        model_path = storage_path / "params"
+        model_path = storage_path / f"params_{MODEL_INPUT_SIZE}"
         model = Predictor(model_path=model_path)
         for data_path in unprocessed_files:
             samples = load_data(data_path)
