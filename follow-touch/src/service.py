@@ -306,18 +306,13 @@ class BLEServiceManager:
                 0, os.SEEK_END
             )  # seek to end of file; f.seek(0, 2) is legal
             self.filehandler.seek(
-                self.filehandler.tell() - 2, os.SEEK_SET
+                self.filehandler.tell() - 3, os.SEEK_SET
             )  # go backwards 2 bytes
             self.filehandler.truncate()
         except Exception as e:
             pass
         finally:
-            # Check if last character is a comma and remove it
-            self.filehandler.seek(-1, os.SEEK_END)
-            last_char = self.filehandler.read(1)
-            if last_char == b",":
-                self.filehandler.seek(-1, os.SEEK_END)
-                self.filehandler.truncate()
+
             # Write the end of the JSON file
             end_json = "]}\n"  # end of json file
             if not self.filehandler.closed:
