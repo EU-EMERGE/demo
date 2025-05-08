@@ -97,9 +97,9 @@ def streamlit_run():
             print(f"Loaded {len(samples)} samples from {data_path}")
             samples = np.array([samples])
             # Apply min max normalization through min e max over the 0th axis
-            samples = (samples - np.amin(samples, axis=0, keepdims=True)) / (
-                np.amax(samples, axis=0, keepdims=True)
-                - np.amin(samples, axis=0, keepdims=True)
+            samples = (samples - np.amin(samples, axis=1, keepdims=True)) / (
+                np.amax(samples, axis=1, keepdims=True)
+                - np.amin(samples, axis=1, keepdims=True)
             )
             pred, activations = model(samples)
             st.session_state.predictions.extend(pred)
