@@ -312,21 +312,14 @@ class BLEServiceManager:
         except Exception as e:
             pass
         finally:
+            # Check if last character is a comma and remove it
+            self.filehandler.seek(-1, os.SEEK_END)
+            last_char = self.filehandler.read(1)
+            if last_char == b",":
+                self.filehandler.seek(-1, os.SEEK_END)
+                self.filehandler.truncate()
+            # Write the end of the JSON file
             end_json = "]}\n"  # end of json file
             if not self.filehandler.closed:
                 self.filehandler.write(end_json)
                 self.filehandler.close()
-        # Reopen and clean trailing comma before closing JSON
-        try:
-            with open(self.full_filename, "rb+") as f:
-                f.seek(0, os.SEEK_END)
-                file_size = f.tell()
-                if file_size >= 3:
-                    f.seek(file_size - 3)
-                    last_bytes = f.read(3)
-                    if last_bytes == b",]}":
-                        f.seek(file_size - 3)
-                        f.write(b"]}")
-                        f.truncate()
-        except Exception as e:
-            print("Failed to clean up trailing comma in JSON file:", e)
