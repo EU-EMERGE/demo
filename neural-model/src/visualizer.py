@@ -10,7 +10,8 @@ import json
 from pathlib import Path
 from .model import Predictor
 
-DEBUG = int(os.getenv("DEBUG", "0"))
+STORAGE_PATH = os.getenv("STORAGE_PATH", "storage")
+DEBUG = int(os.getenv("DEBUG", "1"))
 FOLLOW_TOUCH_ID = int(os.getenv("FOLLOW_TOUCH_ID", "0"))
 MODEL_INPUT_SIZE = int(os.getenv("MODEL_INPUT_SIZE", "4"))
 TRAJECTORY_LENGTH = int(os.getenv("TRAJECTORY_LENGTH", "10"))
@@ -50,7 +51,7 @@ MAX_VALUES = {
 }
 
 
-def streamlit_run(storage_path):
+def streamlit_run():
     """
     Run the Streamlit app to visualize predictions.
     Args:
@@ -64,7 +65,7 @@ def streamlit_run(storage_path):
     # Auto-refresh
     st_autorefresh(interval=PRED_FREQ, limit=None, key="data_autorefresh")
 
-    storage_path = Path(storage_path)
+    storage_path = Path(STORAGE_PATH)
 
     # Find all files matching the pattern "follow_touch_[FOLLOW_TOUCH_ID]_*.json" sorted by filename
     files = sorted(
