@@ -8,8 +8,8 @@ from PySide6.QtBluetooth import (QBluetoothUuid,
                                  QLowEnergyController,
                                  )
 
-from plot import Plot
-from json_to_xls import FollowTouchConversion
+from .plot import Plot
+from .json_to_xls import FollowTouchConversion
 
 
 class BLEServiceManager():
