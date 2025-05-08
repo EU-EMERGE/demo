@@ -187,13 +187,7 @@ def load_data(data_path: os.PathLike) -> list:
         try:
             with open(data_path, "r") as f:
                 content = f.read()
-
-                # Apply the trailing comma fix specifically for ",]}"
-                if content.endswith(",]}") or content.endswith(", ]}"):
-                    # Remove the trailing comma before the closing bracket
-                    content = content.rstrip(", ]}\n") + "]}"
-
-                # Now attempt to load the fixed content
+                content = content[:-3] + "]}"
                 data = json.loads(content)
                 data = data[f"follow_touch_{FOLLOW_TOUCH_ID}"]
                 data = map(process_fn, data)
