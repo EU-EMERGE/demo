@@ -95,7 +95,13 @@ def streamlit_run():
         for data_path in unprocessed_files:
             samples = load_data(data_path)
             print(f"Loaded {len(samples)} samples from {data_path}")
-            pred, activations = model(np.array([samples]))
+            samples = np.array([samples])
+            # Apply min max normalization through min e max over the 0th axis
+            samples = (samples - np.amin(samples, axis=0, keepdims=True)) / (
+                np.amax(samples, axis=0, keepdims=True)
+                - np.amin(samples, axis=0, keepdims=True)
+            )
+            pred, activations = model()
             st.session_state.predictions.extend(pred)
             st.session_state.activations.extend(activations)
             st.session_state.processed_files.add(str(data_path))
@@ -162,11 +168,6 @@ def process_fn(json_sample):
     json_sample = [
         (float(s["i"]) - float(s["b"])) for s in json_sample
     ]  # Removing bias
-    # Apply min-max scaling
-    json_sample = [
-        (s - MIN_VALUES[i]) / (MAX_VALUES[i] - MIN_VALUES[i])
-        for i, s in enumerate(json_sample)
-    ]
     return json_sample
 
 
