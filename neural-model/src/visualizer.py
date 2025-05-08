@@ -101,7 +101,7 @@ def streamlit_run():
                 np.amax(samples, axis=0, keepdims=True)
                 - np.amin(samples, axis=0, keepdims=True)
             )
-            pred, activations = model()
+            pred, activations = model(samples)
             st.session_state.predictions.extend(pred)
             st.session_state.activations.extend(activations)
             st.session_state.processed_files.add(str(data_path))
