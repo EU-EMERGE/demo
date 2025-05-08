@@ -159,7 +159,9 @@ def configure_streamlit():
 def process_fn(json_sample):
     json_sample = json_sample["t"]  # Getting a dict
     json_sample = json_sample[list(json_sample.keys())[0]]  # Getting a list
-    json_sample = [(s["i"] - s["b"]) for s in json_sample]  # Removing bias
+    json_sample = [
+        (float(s["i"]) - float(s["b"])) for s in json_sample
+    ]  # Removing bias
     # Apply min-max scaling
     json_sample = [
         (s - MIN_VALUES[i]) / (MAX_VALUES[i] - MIN_VALUES[i])
