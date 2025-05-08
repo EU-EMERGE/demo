@@ -1,17 +1,13 @@
 from PySide6.QtCore import QObject, Signal, Slot
-from PySide6.QtWidgets import QApplication
-
+# asked chatgpt which produced this code
 
 class ObservableDict(QObject):
-    """
-    This observable keeps track of changes in bluetooth connections, services and other
+    '''
+    This observable keeps track of changes in bluetooth connections, services and other 
     events that influences the behaviour of the class instances
-    """
-
-    valueChanged = Signal(
-        str, object
-    )  # Signal that will be emitted when a value changes
-
+    '''
+    valueChanged = Signal(str, object)  # Signal that will be emitted when a value changes
+    
     def __init__(self, initial_data=None):
         super().__init__()
         self._data = initial_data if initial_data is not None else {}
@@ -27,12 +23,12 @@ class ObservableDict(QObject):
             self._data[key] = value
             self.valueChanged.emit(key, value)
 
-
 class DictionaryObserver(QObject):
     @Slot(str, object)
     def on_value_changed(self, key, value):
         print(f"Value for key '{key}' has changed to {value}")
 
+from PySide6.QtWidgets import QApplication
 
 if __name__ == "__main__":
     app = QApplication([])
