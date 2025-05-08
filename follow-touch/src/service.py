@@ -301,15 +301,32 @@ class BLEServiceManager:
 
     def stop_file(self):
         try:
-            self.filehandler.flush()
-            self.filehandler.close()
-            with open(self.full_filename, "r") as f:
-                content = f.read().rstrip(",\n \t")
-                if content.endswith("["):
-                    content += "]}\n"
-                else:
-                    content = content.rsplit(",", 1)[0] + "]}\n"
-            with open(self.full_filename, "w") as f:
-                f.write(content)
+            # remove last characters (\n and comma)
+            self.filehandler.seek(
+                0, os.SEEK_END
+            )  # seek to end of file; f.seek(0, 2) is legal
+            self.filehandler.seek(
+                self.filehandler.tell() - 2, os.SEEK_SET
+            )  # go backwards 2 bytes
+            self.filehandler.truncate()
         except Exception as e:
-            print("Error finalizing JSON file:", e)
+            pass
+        finally:
+            end_json = "]}\n"  # end of json file
+            if not self.filehandler.closed:
+                self.filehandler.write(end_json)
+                self.filehandler.close()
+        # Reopen and clean trailing comma before closing JSON
+        try:
+            with open(self.full_filename, "rb+") as f:
+                f.seek(0, os.SEEK_END)
+                file_size = f.tell()
+                if file_size >= 3:
+                    f.seek(file_size - 3)
+                    last_bytes = f.read(3)
+                    if last_bytes == b",]}":
+                        f.seek(file_size - 3)
+                        f.write(b"]}")
+                        f.truncate()
+        except Exception as e:
+            print("Failed to clean up trailing comma in JSON file:", e)
