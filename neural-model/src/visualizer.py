@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from .model import Predictor
 
+DEBUG = int(os.getenv("DEBUG", "0"))
 FOLLOW_TOUCH_ID = int(os.getenv("FOLLOW_TOUCH_ID", "0"))
 TRAJECTORY_LENGTH = int(os.getenv("TRAJECTORY_LENGTH", "10"))
 LABEL_CLASSES = 5
@@ -21,6 +22,31 @@ LABEL_NAMES = {
     4: "Upper Left",
 }
 LABEL_COLORS = {0: "red", 1: "blue", 2: "green", 3: "orange", 4: "purple"}
+
+MIN_VALUES = {
+    0: 2267.266666666667,
+    1: 2036.2666666666667,
+    2: 2747.266666666667,
+    3: 2826.766666666667,
+    4: -14.563874340057373,
+    5: 16.056903235117595,
+    6: 28.741963958740236,
+    7: 0.1536218995849291,
+    8: 0.2225757986307144,
+    9: 0.14313021103541054,
+}
+MAX_VALUES = {
+    0: 2355.366666666667,
+    1: 2112.3,
+    2: 2841.733333333333,
+    3: 2934.8333333333335,
+    4: -13.832102203369141,
+    5: 16.904297892252604,
+    6: 30.707981554667153,
+    7: 0.18265110005935034,
+    8: 0.24830841223398845,
+    9: 0.14518664876619972,
+}
 
 
 def streamlit_run(storage_path):
@@ -128,14 +154,40 @@ def configure_streamlit():
     st.title("Predictions Visualization")
 
 
+def process_fn(json_sample):
+    json_sample = json_sample["t"]  # Getting a dict
+    json_sample = json_sample[list(json_sample.keys())[0]]  # Getting a list
+    json_sample = [(s["i"] - s["b"]) for s in json_sample]  # Removing bias
+    # Apply min-max scaling
+    json_sample = [
+        (s - MIN_VALUES[i]) / (MAX_VALUES[i] - MIN_VALUES[i])
+        for i, s in enumerate(json_sample)
+    ]
+    return json_sample
+
+
 def load_data(data_path: os.PathLike) -> list:
     """Load data from the specified JSON file."""
-    try:
-        with open(data_path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        st.error(f"Error loading data: {e}")
-        st.stop()
+    if DEBUG == 1:
+        try:
+            with open(data_path, "r") as f:
+                return json.load(f)
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
+            st.stop()
+    else:
+
+        try:
+
+            with open(data_path, "r") as f:
+                data = json.load(f)
+            data = data[f"follow_touch_{FOLLOW_TOUCH_ID}"]
+            data = map(process_fn, data)
+            return list(data)
+
+        except Exception as e:
+            st.error(f"Error loading data: {e}")
+            st.stop()
 
 
 def run_prediction(buffer: list, model: Predictor) -> tuple:
