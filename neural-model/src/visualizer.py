@@ -88,15 +88,17 @@ def streamlit_run():
     unprocessed_files = [
         f for f in files if str(f) not in st.session_state.processed_files
     ]
-
-    if unprocessed_files:
+    samples_to_process = [load_data(data_path) for data_path in unprocessed_files]
+    unprocessed_files = [
+        unprocessed_files[i]
+        for i in range(len(samples_to_process))
+        if samples_to_process[i] is not None
+    ]
+    samples_to_process = [sample for sample in samples_to_process if sample is not None]
+    if samples_to_process:
         model_path = storage_path / f"params_{MODEL_INPUT_SIZE}"
         model = Predictor(model_path=model_path)
-        for data_path in unprocessed_files:
-            samples = load_data(data_path)
-            if samples is None:
-                continue
-            print(f"Loaded {len(samples)} samples from {data_path}")
+        for data_path, samples in zip(unprocessed_files, samples_to_process):
             samples = np.array([samples])
             # Apply min max normalization through min e max over the 0th axis
             samples = (samples - np.amin(samples, axis=1, keepdims=True)) / (
@@ -182,15 +184,23 @@ def load_data(data_path: os.PathLike) -> list:
         except Exception as e:
             return None
     else:
-
         try:
-
             with open(data_path, "r") as f:
-                data = json.load(f)
-            data = data[f"follow_touch_{FOLLOW_TOUCH_ID}"]
-            data = map(process_fn, data)
-            return list(data)
+                content = f.read()
 
+                # Apply the trailing comma fix specifically for ",]}"
+                if content.endswith(",]}"):
+                    # Remove the trailing comma before the closing bracket
+                    content = content[:-3] + "]}"
+
+                # Now attempt to load the fixed content
+                data = json.loads(content)
+                data = data[f"follow_touch_{FOLLOW_TOUCH_ID}"]
+                data = map(process_fn, data)
+                return list(data)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON from {data_path}: {e}")
+            return None
         except Exception as e:
             return None
 
