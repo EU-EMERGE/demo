@@ -189,9 +189,9 @@ def load_data(data_path: os.PathLike) -> list:
                 content = f.read()
 
                 # Apply the trailing comma fix specifically for ",]}"
-                if content.endswith(",]}"):
+                if content.endswith(",]}") or content.endswith(", ]}"):
                     # Remove the trailing comma before the closing bracket
-                    content = content[:-3] + "]}"
+                    content = content.rstrip(", ]}\n") + "]}"
 
                 # Now attempt to load the fixed content
                 data = json.loads(content)
