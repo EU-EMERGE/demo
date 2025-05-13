@@ -88,6 +88,21 @@ def streamlit_run():
     unprocessed_files = [
         f for f in files if str(f) not in st.session_state.processed_files
     ]
+
+    # Clean up removed files from unprocessed list and session buffers
+    existing_paths = set(str(f) for f in files)
+    to_remove = [
+        i for i, f in enumerate(unprocessed_files) if str(f) not in existing_paths
+    ]
+    for i in reversed(to_remove):  # remove from back to front to preserve indices
+        del unprocessed_files[i]
+        if i < len(st.session_state.predictions):
+            del st.session_state.predictions[i]
+        if i < len(st.session_state.activations):
+            del st.session_state.activations[i]
+        if i < len(st.session_state.pca_buffer):
+            del st.session_state.pca_buffer[i]
+
     samples_to_process = [load_data(data_path) for data_path in unprocessed_files]
     unprocessed_files = [
         unprocessed_files[i]
